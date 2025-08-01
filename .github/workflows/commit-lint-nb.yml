@@ -19,17 +19,16 @@ jobs:
 
       - name: Validate Commit Messages
         run: |
-          # Get commits between base branch and PR head
-          messages=$(git log origin/${{ github.event.pull_request.base.ref }}..HEAD --pretty=format:"%s")
+          # Get only commits introduced in this PR (ignore old branch history)
+          messages=$(git log --no-merges --pretty=format:"%s" ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
 
           echo "Checking commit messages..."
           echo "$messages"
 
           invalid_count=0
           while IFS= read -r msg; do
-            # Skip merge commits
-            if [[ $msg =~ ^Merge ]]; then
-              echo "ℹ️ Skipping merge commit: $msg"
+            # Skip empty message just in case
+            if [[ -z "$msg" ]]; then
               continue
             fi
 
