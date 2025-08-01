@@ -1,0 +1,33 @@
+name: Commit Lint
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Commit Messages
+        run: |
+          # Get commit messages between PR base and head
+          messages=$(git log origin/${{ github.event.pull_request.base.ref }}..HEAD --pretty=format:"%s")
+
+          echo "Checking commit messages..."
+          echo "$messages"
+
+          invalid_count=0
+          while IFS= read -r msg; do
+            if [[ ! $msg =~ ^(feat|fix)(\([a-zA-Z0-9_-]+\))?: ]]; then
+              echo "❌ Invalid commit message: $msg"
+              invalid_count=$((invalid_count+1))
+            fi
+          done <<< "$messages"
+
+          if [ $invalid_count -gt 0 ]; then
+            echo "❌ Commit message validation failed!"
+            exit 1
+          fi
