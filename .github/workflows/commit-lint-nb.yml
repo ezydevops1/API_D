@@ -8,18 +8,18 @@ jobs:
   commitlint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch + fetch main
+      - name: Checkout PR branch + fetch base branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # fetch full history for proper comparison
+          fetch-depth: 0  # fetch full history
 
-      - name: Fetch base branch (main/dev)
+      - name: Fetch base branch
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
 
       - name: Validate Commit Messages
         run: |
-          # Get commits that are part of this PR
+          # Get commits between base branch and PR head
           messages=$(git log origin/${{ github.event.pull_request.base.ref }}..HEAD --pretty=format:"%s")
 
           echo "Checking commit messages..."
@@ -27,7 +27,13 @@ jobs:
 
           invalid_count=0
           while IFS= read -r msg; do
-            # Accept feat:, fix:, docs:, chore:, refactor: with optional (scope)
+            # Skip merge commits
+            if [[ $msg =~ ^Merge ]]; then
+              echo "ℹ️ Skipping merge commit: $msg"
+              continue
+            fi
+
+            # Accept feat, fix, docs, chore, refactor with optional (scope)
             if [[ ! $msg =~ ^(feat|fix|docs|chore|refactor)(\([a-zA-Z0-9_-]+\))?: ]]; then
               echo "❌ Invalid commit message: $msg"
               invalid_count=$((invalid_count+1))
@@ -40,3 +46,4 @@ jobs:
           else
             echo "✅ All commit messages are valid."
           fi
+
