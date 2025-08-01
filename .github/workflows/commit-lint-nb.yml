@@ -8,26 +8,23 @@ jobs:
   commitlint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch + fetch base branch
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # fetch full history
-
-      - name: Fetch base branch
-        run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+          fetch-depth: 0
 
       - name: Validate Commit Messages
         run: |
-          # Get only commits introduced in this PR (ignore old branch history)
-          messages=$(git log --no-merges --pretty=format:"%s" ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
+          # Commits introduced only in this PR (ignores old commits)
+          messages=$(git log --no-merges --pretty=format:"%s" \
+            ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
 
           echo "Checking commit messages..."
           echo "$messages"
 
           invalid_count=0
           while IFS= read -r msg; do
-            # Skip empty message just in case
+            # Skip empty commits just in case
             if [[ -z "$msg" ]]; then
               continue
             fi
