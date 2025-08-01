@@ -1,0 +1,45 @@
+name: Commit Lint
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Commit Messages
+        run: |
+          # Commits introduced only in this PR (ignores old commits)
+          messages=$(git log --no-merges --pretty=format:"%s" \
+            ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
+
+          echo "Checking commit messages..."
+          echo "$messages"
+
+          invalid_count=0
+          while IFS= read -r msg; do
+            # Skip empty commits just in case
+            if [[ -z "$msg" ]]; then
+              continue
+            fi
+
+            # Accept feat, fix, docs, chore, refactor with optional (scope)
+            if [[ ! $msg =~ ^(feat|fix|docs|chore|refactor)(\([a-zA-Z0-9_-]+\))?: ]]; then
+              echo "❌ Invalid commit message: $msg"
+              invalid_count=$((invalid_count+1))
+            fi
+          done <<< "$messages"
+
+          if [ $invalid_count -gt 0 ]; then
+            echo "❌ Commit message validation failed!"
+            exit 1
+          else
+            echo "✅ All commit messages are valid."
+          fi
+
