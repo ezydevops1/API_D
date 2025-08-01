@@ -8,26 +8,28 @@ jobs:
   commitlint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch + fetch main
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # fetch full history for proper comparison
-
-      - name: Fetch base branch (main/dev)
-        run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+          fetch-depth: 0
 
       - name: Validate Commit Messages
         run: |
-          # Get commits that are part of this PR
-          messages=$(git log origin/${{ github.event.pull_request.base.ref }}..HEAD --pretty=format:"%s")
+          # Commits introduced only in this PR (ignores old commits)
+          messages=$(git log --no-merges --pretty=format:"%s" \
+            ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
 
           echo "Checking commit messages..."
           echo "$messages"
 
           invalid_count=0
           while IFS= read -r msg; do
-            # Accept feat:, fix:, docs:, chore:, refactor: with optional (scope)
+            # Skip empty commits just in case
+            if [[ -z "$msg" ]]; then
+              continue
+            fi
+
+            # Accept feat, fix, docs, chore, refactor with optional (scope)
             if [[ ! $msg =~ ^(feat|fix|docs|chore|refactor)(\([a-zA-Z0-9_-]+\))?: ]]; then
               echo "❌ Invalid commit message: $msg"
               invalid_count=$((invalid_count+1))
@@ -35,7 +37,7 @@ jobs:
           done <<< "$messages"
 
           if [ $invalid_count -gt 0 ]; then
-            echo " Commit message validation failed!"
+            echo "❌ Commit message validation failed!"
             exit 1
           else
             echo "✅ All commit messages are valid."
